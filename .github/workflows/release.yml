@@ -1,0 +1,83 @@
+name: Build & Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  # 1) Derive a SemVer from git history + commit messages (GitVersion).
+  #    Base copied from the rlb-nestjs-amqp CI/CD workflow.
+  versioning:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/dotnet/sdk:8.0
+    outputs:
+      GitVersion_SemVer: ${{ env.GitVersion_SemVer }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0 # 0 = fetch full history so GitVersion can compute the version
+      - name: Install GitVersion.Tool
+        id: gitversion
+        run: |
+          dotnet tool install --global GitVersion.Tool --version 5.12.0
+          export PATH="$PATH:/github/home/.dotnet/tools"
+          dotnet-gitversion /config ./GitVersion.yml /nocache /verbosity Diagnostic /output buildserver
+        env:
+          GIT_DEPTH: 10000
+      - name: Display Version
+        run: echo "Version> ${{ env.GitVersion_SemVer }}"
+
+  # 2) Build the thin provider JAR with Maven, stamped with the derived version.
+  build:
+    needs: versioning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - name: Set project version
+        run: mvn -B versions:set -DnewVersion=${{ needs.versioning.outputs.GitVersion_SemVer }} -DgenerateBackupPoms=false
+      - name: Build and test
+        run: mvn -B clean verify
+      - name: Rename artifact with version
+        run: cp target/keycloak-otp-http-spi.jar target/keycloak-otp-http-spi-${{ needs.versioning.outputs.GitVersion_SemVer }}.jar
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jar
+          path: target/keycloak-otp-http-spi-${{ needs.versioning.outputs.GitVersion_SemVer }}.jar
+
+  # 3) Tag the repo with the new version and publish a GitHub Release with the JAR.
+  release:
+    needs:
+      - versioning
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # required to create the tag + release
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jar
+          path: dist
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.versioning.outputs.GitVersion_SemVer }}
+          name: v${{ needs.versioning.outputs.GitVersion_SemVer }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          files: dist/keycloak-otp-http-spi-${{ needs.versioning.outputs.GitVersion_SemVer }}.jar
