@@ -9,7 +9,7 @@ real refresh token** with no Admin-API hacks.
 The OTP entry form is rendered with Keycloak's native login layout (FreeMarker), so
 the user stays inside the standard Keycloak UI throughout.
 
-Tested against **Keycloak 26.6.x** (Quarkus, Java 17+).
+Tested against **Keycloak 25.0.0** (Quarkus, Java 17+).
 
 ## How it works
 
@@ -48,11 +48,11 @@ cp target/keycloak-otp-http-spi.jar /opt/keycloak/providers/
 With the official container image, add it at build time:
 
 ```dockerfile
-FROM quay.io/keycloak/keycloak:26.6.3 AS builder
+FROM quay.io/keycloak/keycloak:25.0.0 AS builder
 COPY keycloak-otp-http-spi.jar /opt/keycloak/providers/
 RUN /opt/keycloak/bin/kc.sh build
 
-FROM quay.io/keycloak/keycloak:26.6.3
+FROM quay.io/keycloak/keycloak:25.0.0
 COPY --from=builder /opt/keycloak /opt/keycloak
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
 ```

@@ -2,12 +2,12 @@
 # Build the JAR first:  mvn clean verify
 # Then:                 docker build -t my-keycloak:otp .
 
-FROM quay.io/keycloak/keycloak:26.6.3 AS builder
+FROM quay.io/keycloak/keycloak:25.0.0 AS builder
 
 COPY target/keycloak-otp-http-spi.jar /opt/keycloak/providers/
 RUN /opt/keycloak/bin/kc.sh build
 
-FROM quay.io/keycloak/keycloak:26.6.3
+FROM quay.io/keycloak/keycloak:25.0.0
 COPY --from=builder /opt/keycloak /opt/keycloak
 
 # Endpoints can be supplied here or set per-flow in the admin UI.
