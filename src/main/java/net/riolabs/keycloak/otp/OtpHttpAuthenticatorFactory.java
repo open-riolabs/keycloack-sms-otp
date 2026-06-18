@@ -69,6 +69,11 @@ public class OtpHttpAuthenticatorFactory implements AuthenticatorFactory {
 
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
+        return configProperties();
+    }
+
+    /** Shared config properties, reused by {@link OtpHttpDirectGrantAuthenticator}. */
+    static List<ProviderConfigProperty> configProperties() {
         ProviderConfigProperty requestUrl = new ProviderConfigProperty();
         requestUrl.setName(OtpHttpConfig.KEY_REQUEST_URL);
         requestUrl.setLabel("OTP request URL");

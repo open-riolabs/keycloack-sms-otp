@@ -1,1 +1,2 @@
 net.riolabs.keycloak.otp.OtpHttpAuthenticatorFactory
+net.riolabs.keycloak.otp.OtpHttpDirectGrantAuthenticator
