@@ -155,6 +155,11 @@ public class OtpHttpDirectGrantAuthenticator extends AbstractDirectGrantAuthenti
     }
 
     @Override
+    public boolean isUserSetupAllowed() {
+        return false;
+    }
+
+    @Override
     public Requirement[] getRequirementChoices() {
         return REQUIREMENT_CHOICES;
     }
