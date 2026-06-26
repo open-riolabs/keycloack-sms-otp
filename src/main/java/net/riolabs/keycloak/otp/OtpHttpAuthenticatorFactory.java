@@ -128,7 +128,17 @@ public class OtpHttpAuthenticatorFactory implements AuthenticatorFactory {
         allowReg.setHelpText("Reserved for direct-grant style flows that create users on the fly. "
                 + "Falls back to OTP_ALLOW_REGISTRATION.");
 
-        return List.of(requestUrl, verifyUrl, authHeader, authToken, phoneAttr, timeout, allowReg);
+        ProviderConfigProperty provider = new ProviderConfigProperty();
+        provider.setName(OtpHttpConfig.KEY_PROVIDER);
+        provider.setLabel("Default delivery provider");
+        provider.setType(ProviderConfigProperty.LIST_TYPE);
+        provider.setOptions(List.of(OtpHttpConfig.PROVIDER_SMS, OtpHttpConfig.PROVIDER_WHATSAPP));
+        provider.setDefaultValue(OtpHttpConfig.DEFAULT_PROVIDER);
+        provider.setHelpText("Delivery channel sent to the OTP service. A 'provider' request "
+                + "parameter (sms/whatsapp) overrides this per call. Falls back to OTP_PROVIDER. "
+                + "Default: sms.");
+
+        return List.of(requestUrl, verifyUrl, authHeader, authToken, phoneAttr, timeout, allowReg, provider);
     }
 
     @Override

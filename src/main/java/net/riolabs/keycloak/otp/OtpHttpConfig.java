@@ -27,6 +27,7 @@ public final class OtpHttpConfig {
     public static final String KEY_PHONE_ATTRIBUTE = "otp.phone.attribute";
     public static final String KEY_TIMEOUT_MS = "otp.http.timeout.ms";
     public static final String KEY_ALLOW_REGISTRATION = "otp.allow.registration";
+    public static final String KEY_PROVIDER = "otp.provider";
 
     // ---- Environment variable fallbacks ----
     public static final String ENV_REQUEST_URL = "OTP_REQUEST_URL";
@@ -36,12 +37,18 @@ public final class OtpHttpConfig {
     public static final String ENV_PHONE_ATTRIBUTE = "OTP_PHONE_ATTRIBUTE";
     public static final String ENV_TIMEOUT_MS = "OTP_HTTP_TIMEOUT_MS";
     public static final String ENV_ALLOW_REGISTRATION = "OTP_ALLOW_REGISTRATION";
+    public static final String ENV_PROVIDER = "OTP_PROVIDER";
 
     // ---- Defaults ----
     public static final String DEFAULT_AUTH_HEADER = "Authorization";
     public static final String DEFAULT_PHONE_ATTRIBUTE = "phoneNumber";
     public static final long DEFAULT_TIMEOUT_MS = 5000L;
     public static final boolean DEFAULT_ALLOW_REGISTRATION = false;
+    public static final String DEFAULT_PROVIDER = "sms";
+
+    // ---- Delivery channels accepted by the external service ----
+    public static final String PROVIDER_SMS = "sms";
+    public static final String PROVIDER_WHATSAPP = "whatsapp";
 
     private final String requestUrl;
     private final String verifyUrl;
@@ -50,10 +57,11 @@ public final class OtpHttpConfig {
     private final String phoneAttribute;
     private final long timeoutMs;
     private final boolean allowRegistration;
+    private final String provider;
 
     private OtpHttpConfig(String requestUrl, String verifyUrl, String authHeader,
                           String authToken, String phoneAttribute, long timeoutMs,
-                          boolean allowRegistration) {
+                          boolean allowRegistration, String provider) {
         this.requestUrl = requestUrl;
         this.verifyUrl = verifyUrl;
         this.authHeader = authHeader;
@@ -61,6 +69,7 @@ public final class OtpHttpConfig {
         this.phoneAttribute = phoneAttribute;
         this.timeoutMs = timeoutMs;
         this.allowRegistration = allowRegistration;
+        this.provider = provider;
     }
 
     public static OtpHttpConfig from(AuthenticatorConfigModel model) {
@@ -71,7 +80,8 @@ public final class OtpHttpConfig {
                 resolve(model, KEY_AUTH_TOKEN, ENV_AUTH_TOKEN, null),
                 resolve(model, KEY_PHONE_ATTRIBUTE, ENV_PHONE_ATTRIBUTE, DEFAULT_PHONE_ATTRIBUTE),
                 resolveLong(model, KEY_TIMEOUT_MS, ENV_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
-                resolveBool(model, KEY_ALLOW_REGISTRATION, ENV_ALLOW_REGISTRATION, DEFAULT_ALLOW_REGISTRATION)
+                resolveBool(model, KEY_ALLOW_REGISTRATION, ENV_ALLOW_REGISTRATION, DEFAULT_ALLOW_REGISTRATION),
+                resolve(model, KEY_PROVIDER, ENV_PROVIDER, null)
         );
     }
 
@@ -142,5 +152,38 @@ public final class OtpHttpConfig {
 
     public boolean allowRegistration() {
         return allowRegistration;
+    }
+
+    /** Configured default delivery channel, if any (already normalized). */
+    public Optional<String> provider() {
+        return Optional.ofNullable(normalizeProvider(provider));
+    }
+
+    /**
+     * Resolves the effective delivery channel: a valid runtime-requested provider wins,
+     * then the configured provider, then {@link #DEFAULT_PROVIDER}. Unknown values are
+     * ignored at each step.
+     */
+    public String resolveProvider(String requested) {
+        String r = normalizeProvider(requested);
+        if (r != null) {
+            return r;
+        }
+        String c = normalizeProvider(provider);
+        if (c != null) {
+            return c;
+        }
+        return DEFAULT_PROVIDER;
+    }
+
+    private static String normalizeProvider(String value) {
+        if (value == null) {
+            return null;
+        }
+        String v = value.trim().toLowerCase();
+        if (PROVIDER_SMS.equals(v) || PROVIDER_WHATSAPP.equals(v)) {
+            return v;
+        }
+        return null;
     }
 }

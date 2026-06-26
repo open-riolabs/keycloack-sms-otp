@@ -24,15 +24,21 @@ import java.util.Map;
  * <p>Contract with the external service:
  * <pre>
  *   POST {requestUrl}
- *     { "phone": "+39...", "username": "...", "realm": "..." }
+ *     { "phone": "+39...", "username": "...", "realm": "...",
+ *       "firstName": "...", "lastName": "...", "locale": "it", "provider": "sms" }
  *     -> 2xx on success
  *
  *   POST {verifyUrl}
- *     { "phone": "+39...", "username": "...", "realm": "...", "otp": "123456" }
+ *     { "phone": "+39...", "username": "...", "realm": "...",
+ *       "firstName": "...", "lastName": "...", "locale": "it", "provider": "sms",
+ *       "otp": "123456" }
  *     -> 2xx and body {"valid": true}  => accepted
  *     -> 2xx and body {"valid": false} => rejected
  *     -> 4xx                           => rejected
  * </pre>
+ *
+ * <p>{@code locale} is {@code "undefined"} when the realm has no internationalization
+ * enabled; {@code provider} is one of {@code "sms"} / {@code "whatsapp"}.
  */
 public class OtpHttpClient {
 
@@ -51,13 +57,10 @@ public class OtpHttpClient {
     }
 
     /** Triggers OTP generation + delivery on the external service. */
-    public boolean requestOtp(String phone, String username, String realm) {
+    public boolean requestOtp(OtpRequestData data) {
         String url = config.requestUrl().orElseThrow(
                 () -> new IllegalStateException("OTP request URL not configured"));
-        ObjectNode payload = MAPPER.createObjectNode();
-        payload.put("phone", phone);
-        payload.put("username", username);
-        payload.put("realm", realm);
+        ObjectNode payload = basePayload(data);
 
         try {
             HttpResponse<String> resp = send(url, payload);
@@ -73,13 +76,10 @@ public class OtpHttpClient {
     }
 
     /** Asks the external service to validate a submitted code. */
-    public boolean verifyOtp(String phone, String username, String realm, String otp) {
+    public boolean verifyOtp(OtpRequestData data, String otp) {
         String url = config.verifyUrl().orElseThrow(
                 () -> new IllegalStateException("OTP verify URL not configured"));
-        ObjectNode payload = MAPPER.createObjectNode();
-        payload.put("phone", phone);
-        payload.put("username", username);
-        payload.put("realm", realm);
+        ObjectNode payload = basePayload(data);
         payload.put("otp", otp);
 
         try {
@@ -93,6 +93,19 @@ public class OtpHttpClient {
             LOG.error("OTP verify call failed", e);
             return false;
         }
+    }
+
+    /** Common fields shared by request and verify calls. */
+    private ObjectNode basePayload(OtpRequestData data) {
+        ObjectNode payload = MAPPER.createObjectNode();
+        payload.put("phone", data.phone());
+        payload.put("username", data.username());
+        payload.put("realm", data.realm());
+        payload.put("firstName", data.firstName());
+        payload.put("lastName", data.lastName());
+        payload.put("locale", data.locale());
+        payload.put("provider", data.provider());
+        return payload;
     }
 
     private HttpResponse<String> send(String url, ObjectNode payload) throws Exception {

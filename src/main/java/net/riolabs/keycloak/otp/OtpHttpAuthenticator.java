@@ -67,7 +67,7 @@ public class OtpHttpAuthenticator implements Authenticator {
         }
 
         sendOtp(context, config, user, phone);
-        context.challenge(otpForm(context).createForm(FORM_TEMPLATE));
+        context.challenge(otpForm(context, config).createForm(FORM_TEMPLATE));
     }
 
     @Override
@@ -83,7 +83,7 @@ public class OtpHttpAuthenticator implements Authenticator {
         // Resend support — re-trigger the external request endpoint.
         if (form.containsKey(FORM_ACTION_RESEND)) {
             sendOtp(context, config, user, phone);
-            context.challenge(otpForm(context)
+            context.challenge(otpForm(context, config)
                     .setInfo("otpHttpResent")
                     .createForm(FORM_TEMPLATE));
             return;
@@ -91,7 +91,7 @@ public class OtpHttpAuthenticator implements Authenticator {
 
         String otp = form.getFirst(FORM_FIELD_OTP);
         if (otp == null || otp.isBlank()) {
-            context.challenge(otpForm(context)
+            context.challenge(otpForm(context, config)
                     .setError("otpHttpMissing")
                     .createForm(FORM_TEMPLATE));
             return;
@@ -99,21 +99,20 @@ public class OtpHttpAuthenticator implements Authenticator {
 
         OtpHttpClient client = new OtpHttpClient(config);
         boolean valid = client.verifyOtp(
-                phone, user.getUsername(), context.getRealm().getName(), otp.trim());
+                OtpRequestData.from(context, config, phone), otp.trim());
 
         if (valid) {
             context.success();
         } else {
             context.failureChallenge(AuthenticationFlowError.INVALID_CREDENTIALS,
-                    otpForm(context).setError("otpHttpInvalid").createForm(FORM_TEMPLATE));
+                    otpForm(context, config).setError("otpHttpInvalid").createForm(FORM_TEMPLATE));
         }
     }
 
     private void sendOtp(AuthenticationFlowContext context, OtpHttpConfig config,
                          UserModel user, String phone) {
         OtpHttpClient client = new OtpHttpClient(config);
-        boolean sent = client.requestOtp(phone, user.getUsername(),
-                context.getRealm().getName());
+        boolean sent = client.requestOtp(OtpRequestData.from(context, config, phone));
         context.getAuthenticationSession().setAuthNote(NOTE_PHONE, phone);
         context.getAuthenticationSession().setAuthNote(NOTE_OTP_SENT, Boolean.toString(sent));
         if (!sent) {
@@ -129,8 +128,13 @@ public class OtpHttpAuthenticator implements Authenticator {
         return user.getFirstAttribute(config.phoneAttribute());
     }
 
-    private org.keycloak.forms.login.LoginFormsProvider otpForm(AuthenticationFlowContext context) {
-        return context.form();
+    private org.keycloak.forms.login.LoginFormsProvider otpForm(AuthenticationFlowContext context,
+                                                                OtpHttpConfig config) {
+        // Pre-select the channel the next (re)send will use, so the dropdown reflects
+        // either the user's last choice or the configured/default provider.
+        String requested = context.getHttpRequest().getDecodedFormParameters().getFirst(
+                OtpRequestData.PARAM_PROVIDER);
+        return context.form().setAttribute("otpHttpProvider", config.resolveProvider(requested));
     }
 
     private Response errorPage(AuthenticationFlowContext context, String messageKey) {

@@ -88,11 +88,10 @@ public class OtpHttpDirectGrantAuthenticator extends AbstractDirectGrantAuthenti
         MultivaluedMap<String, String> params = context.getHttpRequest().getDecodedFormParameters();
         String otp = params.getFirst(PARAM_OTP);
         OtpHttpClient client = new OtpHttpClient(config);
-        String realm = context.getRealm().getName();
 
         if (otp == null || otp.isBlank()) {
             // Step 1: no code submitted yet → send one and tell the client to resubmit.
-            boolean sent = client.requestOtp(phone, user.getUsername(), realm);
+            boolean sent = client.requestOtp(OtpRequestData.from(context, config, phone));
             if (!sent) {
                 LOG.warnf("External OTP request endpoint did not confirm delivery for user %s",
                         user.getUsername());
@@ -105,7 +104,7 @@ public class OtpHttpDirectGrantAuthenticator extends AbstractDirectGrantAuthenti
         }
 
         // Step 2: verify the submitted code.
-        boolean valid = client.verifyOtp(phone, user.getUsername(), realm, otp.trim());
+        boolean valid = client.verifyOtp(OtpRequestData.from(context, config, phone), otp.trim());
         if (valid) {
             context.success();
         } else {

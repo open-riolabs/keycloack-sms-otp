@@ -131,6 +131,11 @@ read the same keys.
 | `otp.phone.attribute`    | `OTP_PHONE_ATTRIBUTE`     | `phoneNumber`   | No       | User attribute holding the phone number              |
 | `otp.http.timeout.ms`    | `OTP_HTTP_TIMEOUT_MS`     | `5000`          | No       | Connect/read timeout (ms) for calls to your service  |
 | `otp.allow.registration` | `OTP_ALLOW_REGISTRATION`  | `false`         | No       | Reserved for direct‑grant auto‑provisioning          |
+| `otp.provider`           | `OTP_PROVIDER`            | `sms`           | No       | Default delivery channel (`sms` / `whatsapp`)        |
+
+> The delivery channel can also be chosen **per request** by sending a `provider` parameter
+> (`sms` or `whatsapp`). Resolution order: request parameter → `otp.provider` / `OTP_PROVIDER`
+> → `sms`. Unknown values are ignored at each step.
 
 > Keep the auth token in the **environment variable**, not the UI field, so it never lands
 > in realm exports. A blank UI field transparently falls back to the env var.
@@ -145,9 +150,21 @@ You must expose two `POST` endpoints. Both receive `Content-Type: application/js
 ### Request (send the code) — `POST {request URL}`
 
 ```json
-{ "phone": "+391234567890", "username": "+391234567890", "realm": "myrealm" }
+{
+  "phone": "+391234567890",
+  "username": "+391234567890",
+  "realm": "myrealm",
+  "firstName": "Mario",
+  "lastName": "Rossi",
+  "locale": "it",
+  "provider": "sms"
+}
 ```
 
+- `firstName` / `lastName` come from the Keycloak user (may be `null` if unset).
+- `locale` is the resolved realm locale (e.g. `it`) when the realm has internationalization
+  enabled, otherwise the literal string `"undefined"`.
+- `provider` is the resolved delivery channel: `sms` or `whatsapp` (see *Configuration*).
 - Your service generates, stores and delivers the code (SMS/WhatsApp/etc.).
 - Return any **`2xx`** to indicate the code was accepted for delivery.
 - Non‑`2xx` (or a network error) is logged as "did not confirm delivery"; in the browser
@@ -156,7 +173,16 @@ You must expose two `POST` endpoints. Both receive `Content-Type: application/js
 ### Verify (validate the code) — `POST {verify URL}`
 
 ```json
-{ "phone": "+391234567890", "username": "+391234567890", "realm": "myrealm", "otp": "123456" }
+{
+  "phone": "+391234567890",
+  "username": "+391234567890",
+  "realm": "myrealm",
+  "firstName": "Mario",
+  "lastName": "Rossi",
+  "locale": "it",
+  "provider": "sms",
+  "otp": "123456"
+}
 ```
 
 | Response | Result |

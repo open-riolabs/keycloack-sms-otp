@@ -22,6 +22,23 @@
                 </div>
             </div>
 
+            <#-- Delivery channel selector. Submitted as the `provider` form parameter,
+                 which the authenticator forwards to the external OTP service. In the
+                 browser flow this takes effect on "Resend" (the first code is sent with
+                 the default channel before this form is shown). -->
+            <div class="${properties.kcFormGroupClass!}">
+                <div class="${properties.kcLabelWrapperClass!}">
+                    <label for="provider" class="${properties.kcLabelClass!}">${msg("otpHttpProvider")}</label>
+                </div>
+                <div class="${properties.kcInputWrapperClass!}">
+                    <#assign selectedProvider = (otpHttpProvider!'sms')>
+                    <select id="provider" name="provider" class="${properties.kcInputClass!}">
+                        <option value="sms" <#if selectedProvider == 'sms'>selected</#if>>${msg("otpHttpProviderSms")}</option>
+                        <option value="whatsapp" <#if selectedProvider == 'whatsapp'>selected</#if>>${msg("otpHttpProviderWhatsapp")}</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="${properties.kcFormGroupClass!} ${properties.kcFormSettingClass!}">
                 <div id="kc-form-buttons" class="${properties.kcFormButtonsClass!}">
                     <input class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!} ${properties.kcButtonBlockClass!} ${properties.kcButtonLargeClass!}"
